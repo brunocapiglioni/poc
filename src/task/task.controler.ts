@@ -1,10 +1,77 @@
 import type { Request, Response, NextFunction } from 'express'
-import { Task } from './task.entity'
+import { Task } from './task.entity.js'
 import { PrismaClient } from '@prisma/client'
+import { body, validationResult } from 'express-validator'
+import type { Schema } from 'express-validator'
 
 const prisma = new PrismaClient()
 
-function sanitizeTaskInput(
+const bodySchema: Schema = {
+  title: {
+    isString: {
+      errorMessage: "Title must be a string",
+    },
+    isLength: {
+      options: { min: 1 },
+      errorMessage: "Title is required"
+    }
+  },
+  description: {
+    isString: {
+      errorMessage: "Description must be a string",
+    },
+    isLength: {
+      options: { min:1 },
+      errorMessage: "Description is required"
+    }
+  },
+  iduser: {
+    isInt: {
+      errorMessage: "idUser must be a number"
+    },
+    toInt: true,
+    isLength: {
+      options: { min:1 },
+      errorMessage: "idUser is required"
+    }
+  }
+}
+
+const partBodySchema: Schema = {
+  title: {
+    isString: {
+      errorMessage: "Title must be a string",
+    },
+    isLength: {
+      options: { min: 1 },
+      errorMessage: "Title is required"
+    },
+    optional: true
+  },
+  description: {
+    isString: {
+      errorMessage: "Description must be a string",
+    },
+    isLength: {
+      options: { min:1 },
+      errorMessage: "Description is required"
+    },
+    optional: true
+  },
+  iduser: {
+    isInt: {
+      errorMessage: "idUser must be a number"
+    },
+    toInt: true,
+    isLength: {
+      options: { min:1 },
+      errorMessage: "idUser is required"
+    },
+    optional: true
+  }
+}
+
+/*function sanitizeTaskInput(
   req: Request,
   res: Response,
   next: NextFunction
@@ -22,6 +89,7 @@ function sanitizeTaskInput(
   })
   next()
 }
+*/
 
 async function findAll(req: Request, res: Response) {
   try {
@@ -50,31 +118,48 @@ async function findOne(req: Request, res: Response) {
 
 async function add(req: Request, res: Response) {
   try {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const task = await prisma.task.create({
-      data: req.body
-    })
-    res.status(201).json({ message: 'task created', data: task })
+      data: {
+        title: req.body.title,
+        description: req.body.description,
+        iduser: req.body.iduser
+      },
+    });
+
+    return res.status(201).json({
+      message: 'task created',
+      data: task,
+    });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    return res.status(500).json({ message: error.message });
   }
 }
 
 async function update(req: Request, res: Response) {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const taskToUpdate = await prisma.task.update({
-      where: {
-        id: Number(req.params.id),
-      },
-      data: req.body,
-      include: {
-        user: true
-      },
-    })
-    res
-      .status(200)
-      .json({ message: 'task updated', data: taskToUpdate })
+      where: { id: Number(req.params.id) },
+      data: req.body, // ✅ puede tener uno o varios campos
+      include: { user: true },
+    });
+
+    return res.status(200).json({
+      message: 'task updated',
+      data: taskToUpdate,
+    });
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+    return res.status(500).json({ message: error.message });
   }
 }
 
@@ -90,4 +175,4 @@ async function remove(req: Request, res: Response) {
   }
 }
 
-export { sanitizeTaskInput, findAll, findOne, add, update, remove }
+export { bodySchema, partBodySchema, findAll, findOne, add, update, remove }

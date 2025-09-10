@@ -1,4 +1,4 @@
-import { Task } from '../task/task.entity'
+import { Task } from '../task/task.entity.js'
 
 export class User {
   constructor(
